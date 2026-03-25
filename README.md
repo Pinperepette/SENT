@@ -151,6 +151,22 @@ docker run --rm -v sent-data:/app/data \
   sent watch -t 8 -i 30
 ```
 
+**dyana dynamic analysis** — the Docker image ships with dyana and the Docker CLI pre-installed.
+Mount the host Docker socket so dyana can launch sandbox containers:
+
+```bash
+# On-demand analysis with dyana detonation
+docker run --rm -v sent-data:/app/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  sent analyze requests -e pypi --dyana
+
+# Automatic dyana detonation during monitoring
+docker run --rm -v sent-data:/app/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e SENT_DYANA=1 -e SENT_DYANA_MIN_SCORE=200 \
+  sent watch -t 8 -i 30
+```
+
 ### Manual install
 
 #### 1. Install
@@ -420,6 +436,16 @@ dyana installs the package inside an isolated container traced with eBPF, record
 
 ### Setup
 
+**Docker** — dyana and the Docker CLI are pre-installed in the image. Just mount the host Docker socket:
+
+```bash
+docker run --rm -v sent-data:/app/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  sent analyze <package> -e pypi --dyana
+```
+
+**Manual install:**
+
 ```bash
 pip install dyana
 # Docker must be running
@@ -430,12 +456,25 @@ pip install dyana
 On-demand (analyze a specific package):
 
 ```bash
+# Docker
+docker run --rm -v sent-data:/app/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  sent analyze <package> -e pypi --dyana
+
+# Manual
 python3 cli.py analyze <package> -e pypi --dyana
 ```
 
 Automatic (detonate anything SENT flags above a threshold):
 
 ```bash
+# Docker
+docker run --rm -v sent-data:/app/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e SENT_DYANA=1 -e SENT_DYANA_MIN_SCORE=200 \
+  sent watch -t 8 -i 30
+
+# Manual
 SENT_DYANA=1 SENT_DYANA_MIN_SCORE=200 python3 cli.py watch -t 8 -i 30
 ```
 

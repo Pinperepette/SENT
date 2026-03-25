@@ -12,6 +12,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = ["anthropic>=0.40"]
+dyana = ["dyana"]
 
 [project.scripts]
 sent = "cli:main"
