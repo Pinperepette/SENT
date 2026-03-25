@@ -121,7 +121,7 @@ Result: benign update scores 21, stealth attack scores 144 (7x ratio).
 
 ### Docker (recommended)
 
-The fastest way to get running. Requires [Docker](https://docs.docker.com/get-docker/).
+The fastest way to get started. Requires [Docker](https://docs.docker.com/get-docker/).
 
 ```bash
 # Build
