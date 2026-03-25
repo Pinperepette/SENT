@@ -32,6 +32,7 @@ from graph.dependency_graph import graph
 from scoring.scorer import compute_priority_score, should_analyze
 from task_queue.analysis_queue import AnalysisTask, analysis_queue
 from analysis.differ import analyze_package
+from analysis.detonator import should_detonate, detonate
 from ai.classifier import classify_with_ai
 from alerts import should_alert, send_alert
 
@@ -105,6 +106,16 @@ def _worker_analyze(task: AnalysisTask):
             classification, reason = classify_with_ai(report)
             report.ai_classification = classification
             report.summary += f" | AI: {classification} — {reason}"
+
+        # Dynamic analysis via dyana (if enabled and score high enough)
+        if should_detonate(report.risk_score):
+            dyana_report = detonate(task.package_name, task.new_version)
+            if dyana_report.success:
+                report.summary += (
+                    f" | Dyana: net={len(dyana_report.network_activity)}"
+                    f" fs={len(dyana_report.filesystem_activity)}"
+                    f" sec={len(dyana_report.security_events)}"
+                )
 
         store.save_diff_report(report)
         store.mark_event_processed(task.package_name, task.ecosystem, task.new_version)

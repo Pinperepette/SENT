@@ -366,6 +366,45 @@ Environment variables:
 | `SENT_ALERT_DESKTOP` | `1` | Desktop notifications (`1` = on, `0` = off) |
 | `SENT_ALERT_MIN_SCORE` | `30` | Minimum risk score to trigger an alert |
 | `ANTHROPIC_API_KEY` | (none) | Required only for `api` AI backend |
+| `SENT_DYANA` | `0` | Enable dyana dynamic analysis (`1` = on) |
+| `SENT_DYANA_MIN_SCORE` | `100` | Minimum risk score to trigger dyana detonation |
+
+## Dynamic analysis with dyana (optional)
+
+SENT does **static** analysis (AST diff, behavioral scoring). For **dynamic** analysis — actually executing the package in a sandbox and observing what it does at runtime — SENT integrates with [dyana](https://github.com/dreadnode/dyana) by [dreadnode](https://github.com/dreadnode).
+
+dyana installs the package inside an isolated container traced with eBPF, recording network connections, filesystem access, and suspicious syscalls.
+
+### Setup
+
+```bash
+pip install dyana
+# Docker must be running
+```
+
+### Usage
+
+On-demand (analyze a specific package):
+
+```bash
+python3 cli.py analyze <package> -e pypi --dyana
+```
+
+Automatic (detonate anything SENT flags above a threshold):
+
+```bash
+SENT_DYANA=1 SENT_DYANA_MIN_SCORE=200 python3 cli.py watch -t 8 -i 30
+```
+
+### How it fits together
+
+```
+SENT (static)                          dyana (dynamic)
+  AST diff → "this looks suspicious"  →  sandbox install → "this DOES suspicious things"
+  fast, runs on everything               slow, runs only on high-score packages
+```
+
+SENT filters 8,100 releases/hour down to a handful of suspects. dyana confirms or clears them with runtime evidence.
 
 ## Limitations
 

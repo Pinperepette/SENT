@@ -71,7 +71,9 @@ def watch(ecosystem, interval, threshold):
               type=click.Choice(["auto", "claude-code", "api", "rules"]),
               default="auto",
               help="AI backend: claude-code (CLI), api (Anthropic), rules (no AI), auto")
-def analyze(package_name, ecosystem, version, old_version, ai_backend):
+@click.option("--dyana", is_flag=True, default=False,
+              help="Run dynamic analysis via dyana sandbox (requires Docker)")
+def analyze(package_name, ecosystem, version, old_version, ai_backend, dyana):
     """Analyze a specific package version diff."""
     from main import analyze_single
 
@@ -80,6 +82,32 @@ def analyze(package_name, ecosystem, version, old_version, ai_backend):
                                 ai_backend=ai_backend)
 
     _print_report(report.to_dict())
+
+    if dyana:
+        from analysis.detonator import detonate, dyana_available
+        if not dyana_available():
+            console.print("[red]dyana not installed. Run: pip install dyana[/red]")
+            return
+        console.print(f"\n[bold]Dynamic analysis (dyana sandbox):[/bold]")
+        ver = version or (report.version if hasattr(report, 'version') else "")
+        dr = detonate(package_name, ver)
+        if dr.success:
+            if dr.network_activity:
+                console.print(f"  [blue]Network ({len(dr.network_activity)}):[/blue]")
+                for line in dr.network_activity[:10]:
+                    console.print(f"    {line}")
+            if dr.filesystem_activity:
+                console.print(f"  [yellow]Filesystem ({len(dr.filesystem_activity)}):[/yellow]")
+                for line in dr.filesystem_activity[:10]:
+                    console.print(f"    {line}")
+            if dr.security_events:
+                console.print(f"  [red]Security ({len(dr.security_events)}):[/red]")
+                for line in dr.security_events[:10]:
+                    console.print(f"    {line}")
+            if not (dr.network_activity or dr.filesystem_activity or dr.security_events):
+                console.print("  [green]No suspicious runtime behavior detected.[/green]")
+        else:
+            console.print(f"  [red]{dr.error}[/red]")
 
 
 @main.command()
