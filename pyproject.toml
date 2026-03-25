@@ -1,0 +1,17 @@
+[project]
+name = "sent"
+version = "0.1.0"
+description = "Real-time supply chain threat detection for package ecosystems"
+requires-python = ">=3.9"
+dependencies = [
+    "httpx>=0.24",
+    "networkx>=3.0",
+    "rich>=13.0",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+ai = ["anthropic>=0.40"]
+
+[project.scripts]
+sent = "cli:main"

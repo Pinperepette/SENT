@@ -1,0 +1,4 @@
+httpx>=0.24
+networkx>=3.0
+rich>=13.0
+click>=8.1
