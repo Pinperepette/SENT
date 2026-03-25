@@ -106,6 +106,7 @@ def _worker_analyze(task: AnalysisTask):
             classification, reason = classify_with_ai(report)
             report.ai_classification = classification
             report.summary += f" | AI: {classification} — {reason}"
+            print(f"  [ai] {task.ecosystem}/{task.package_name} → {classification}: {reason}")
 
         # Dynamic analysis via dyana (if enabled and score high enough)
         if should_detonate(report.risk_score):
