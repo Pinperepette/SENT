@@ -66,7 +66,7 @@ class DyanaReport:
         }
 
 
-def detonate(package_name: str, version: str, timeout: int = 120) -> DyanaReport:
+def detonate(package_name: str, version: str, timeout: int = 300) -> DyanaReport:
     """
     Run dyana dynamic analysis on a package.
 
