@@ -392,6 +392,14 @@ Static whitelists break: Flask *should* use `os.environ`. Instead, we learn that
 **Why not scan everything?**
 At 8,100 releases/hour, downloading and analyzing every package would cost ~$50K/month in compute alone, plus API costs for LLM classification. The cascade-weighted filter reduces this to ~80 analyses/hour (top 1%) while covering 90%+ of supply chain risk.
 
-## Credits
+## Origin
 
-Inspired by the conversation between [@N3mes1s](https://twitter.com/N3mes1s) and [@evilsocket](https://twitter.com/evilsocket) about the gap in real-time supply chain monitoring.
+The idea behind SENT comes from a conversation between [Simone Margaritelli (@evilsocket)](https://twitter.com/evilsocket) and [Giuseppe (@N3mes1s)](https://twitter.com/N3mes1s) about the lack of real-time supply chain monitoring.
+
+The key observations that shaped this project:
+
+- **@N3mes1s** measured ~8,100 live release events/hour across PyPI, npm, and crates.io — and pointed out that no "dependency scanning" company catches this in real time
+- **@evilsocket** proposed the cascade-weighted dependency graph approach: create a weighted global graph where the weight of each node is the cumulative downloads of all its dependencies (in cascade), and reflect that weight back in the chain to prioritize scanning
+- **@evilsocket** also proposed the diff-first strategy: when a new version is out, don't feed the entire thing to AI — diff it with the previous version and only send the diff
+
+SENT is an implementation of these ideas.
