@@ -131,8 +131,9 @@ def _worker_analyze(task: AnalysisTask):
                   f"{task.old_version}→{task.new_version} "
                   f"score={report.risk_score} ({an_ms:.0f}ms)")
 
-            # Alert if score exceeds alert threshold
-            if should_alert(report.risk_score):
+            # Alert only if AI says suspicious/malicious (or no AI and score high)
+            ai = report.ai_classification
+            if should_alert(report.risk_score) and ai != "benign":
                 rd = report.to_dict()
                 send_alert(
                     package_name=task.package_name,
@@ -424,8 +425,8 @@ def analyze_single(name: str, ecosystem: str, version: str = "",
 
     store.save_diff_report(report)
 
-    # Alert if suspicious
-    if should_alert(report.risk_score):
+    # Alert only if not benign
+    if should_alert(report.risk_score) and report.ai_classification != "benign":
         rd = report.to_dict()
         send_alert(
             package_name=name, ecosystem=ecosystem,
