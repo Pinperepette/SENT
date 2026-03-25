@@ -2,6 +2,12 @@
 
 Real-time supply chain threat detection for package ecosystems. Monitors PyPI and npm release streams, prioritizes packages by cascade impact across the dependency graph, and performs AST-based behavioral diff analysis to catch malicious updates — including stealth modifications to existing code — before they spread.
 
+![SENT watch — real-time monitoring](imm/1.png)
+
+![SENT top — risky packages dashboard](imm/2.png)
+
+![SENT metrics — runtime stats](imm/3.png)
+
 ## The problem
 
 ~8,100 package releases happen every hour across PyPI, npm, and crates.io. That's ~2.25 releases per second — continuously.
