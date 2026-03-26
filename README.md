@@ -453,7 +453,6 @@ Environment variables:
 | `SENT_ALERT_MIN_SCORE` | `30` | Minimum risk score to trigger an alert |
 | `ANTHROPIC_API_KEY` | (none) | Required only for `api` AI backend |
 | `SENT_DYANA` | `0` | Enable dyana dynamic analysis (`1` = on) |
-| `SENT_DYANA_MIN_SCORE` | `100` | Minimum risk score to trigger dyana detonation |
 
 ## Dynamic analysis with dyana (optional)
 
@@ -461,17 +460,28 @@ SENT does **static** analysis (AST diff, behavioral scoring). For **dynamic** an
 
 dyana installs the package inside an isolated container traced with eBPF, recording network connections, filesystem access, and suspicious syscalls.
 
-### Setup
+### How it works
 
-**Docker** — dyana and the Docker CLI are pre-installed in the image. Just mount the host Docker socket:
+dyana runs in a **background thread** with its own queue. The main workers never block:
 
-```bash
-docker run --rm -v sent-data:/app/data \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  sent analyze <package> -e pypi --dyana
+```
+Worker analyzes package
+  → AI says "suspicious"
+    → enqueue to dyana (instant, non-blocking)
+    → worker moves on to next package
+  → AI says "benign"
+    → no dyana, worker moves on
+
+Background dyana thread (separate, one at a time):
+  → picks from queue
+  → detonates in Docker container with eBPF tracing
+  → saves results to DB
+  → picks next
 ```
 
-**Manual install:**
+Only packages that the AI classifies as **suspicious or malicious** get sent to dyana. Benign packages are never detonated.
+
+### Setup
 
 ```bash
 pip install dyana
@@ -480,40 +490,35 @@ pip install dyana
 
 ### Usage
 
-On-demand (analyze a specific package):
+Automatic (recommended): dyana detonates whatever the AI flags as suspicious:
 
 ```bash
-# Docker
-docker run --rm -v sent-data:/app/data \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  sent analyze <package> -e pypi --dyana
+SENT_AI_BACKEND=claude-code SENT_DYANA=1 python3 cli.py watch -t 8 -i 30
+```
 
-# Manual
+On-demand: detonate a specific package manually:
+
+```bash
 python3 cli.py analyze <package> -e pypi --dyana
 ```
 
-Automatic (detonate anything SENT flags above a threshold):
+Docker:
 
 ```bash
-# Docker
 docker run --rm -v sent-data:/app/data \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -e SENT_DYANA=1 -e SENT_DYANA_MIN_SCORE=200 \
+  -e SENT_DYANA=1 -e SENT_AI_BACKEND=claude-code \
   sent watch -t 8 -i 30
-
-# Manual
-SENT_DYANA=1 SENT_DYANA_MIN_SCORE=200 python3 cli.py watch -t 8 -i 30
 ```
 
-### How it fits together
+### The full pipeline
 
 ```
-SENT (static)                          dyana (dynamic)
-  AST diff → "this looks suspicious"  →  sandbox install → "this DOES suspicious things"
-  fast, runs on everything               slow, runs only on high-score packages
+8,100 releases/hr → scoring filter → AST diff → AI classification → dyana detonation
+                     ~80 analyzed      1.3ms       suspicious only     background, one at a time
 ```
 
-SENT filters 8,100 releases/hour down to a handful of suspects. dyana confirms or clears them with runtime evidence.
+SENT filters, Claude interprets, dyana confirms. Each stage reduces the volume for the next.
 
 ## Limitations
 
