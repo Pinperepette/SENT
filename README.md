@@ -198,6 +198,31 @@ You should see something like:
 
 Without this step, all packages score 0 and nothing gets analyzed.
 
+#### 2b. Import your SBOM (optional)
+
+If you want SENT to monitor **your** supply chain specifically, import your dependency file:
+
+```bash
+# pip requirements
+python3 cli.py sbom requirements.txt
+
+# npm
+python3 cli.py sbom package.json
+
+# plain list (one package per line)
+python3 cli.py sbom my-packages.txt
+```
+
+This resolves 3 levels of transitive dependencies and boosts all of them to maximum priority. Any release of a package in your dependency tree gets analyzed immediately, even if it has 50 global downloads.
+
+You can also pass it directly to `watch`:
+
+```bash
+python3 cli.py watch --sbom-file requirements.txt -t 8 -i 30
+```
+
+This combines global monitoring (bootstrap top 200) with targeted monitoring (your deps).
+
 #### 3. Start monitoring
 
 ```bash
@@ -319,7 +344,8 @@ python3 cli.py watch -t 8 -i 30
 | Command | Description |
 |---|---|
 | `bootstrap [-p 150] [-n 50]` | Seed dependency graph with top PyPI/npm packages |
-| `watch [-t 8] [-i 30] [-e all]` | Continuous monitoring daemon |
+| `sbom <file>` | Import your SBOM and boost your dependencies |
+| `watch [-t 8] [-i 30] [-e all] [--sbom-file FILE]` | Continuous monitoring daemon |
 | `poll [-t 8] [-e all]` | Single polling cycle |
 | `analyze <pkg> -e pypi\|npm` | Analyze a specific package version |
 | `top [-n 20]` | Show top risky packages |
@@ -353,7 +379,8 @@ sent/
 │
 ├── graph/
 │   ├── dependency_graph.py         Weighted DAG with cascade propagation
-│   └── bootstrap.py                Seed graph with top packages
+│   ├── bootstrap.py                Seed graph with top packages
+│   └── sbom.py                     Import your SBOM for targeted monitoring
 │
 ├── scoring/
 │   └── scorer.py                   score = log(cascade_weight + 1)
