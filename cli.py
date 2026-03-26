@@ -100,7 +100,7 @@ def analyze(package_name, ecosystem, version, old_version, ai_backend, dyana):
     _print_report(report.to_dict())
 
     if dyana:
-        from analysis.detonator import detonate, dyana_available
+        from analysis.detonator import detonate, dyana_available, docker_running
         if not dyana_available():
             console.print("[red]dyana not installed. Run: pip install dyana[/red]")
             return

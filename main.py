@@ -32,7 +32,7 @@ from graph.dependency_graph import graph
 from scoring.scorer import compute_priority_score, should_analyze
 from task_queue.analysis_queue import AnalysisTask, analysis_queue
 from analysis.differ import analyze_package
-from analysis.detonator import should_detonate, detonate
+from analysis.detonator import enqueue_detonation, stop_dyana_worker, dyana_queue_size, DYANA_ENABLED
 from ai.classifier import classify_with_ai
 from alerts import should_alert, send_alert
 
@@ -108,17 +108,15 @@ def _worker_analyze(task: AnalysisTask):
             report.summary += f" | AI: {classification} — {reason}"
             print(f"  [ai] {task.ecosystem}/{task.package_name} → {classification}: {reason}")
 
-        # Dynamic analysis via dyana (if enabled and score high enough)
-        if should_detonate(report.risk_score):
-            dyana_report = detonate(task.package_name, task.new_version)
-            if dyana_report.success:
-                report.summary += (
-                    f" | Dyana: net={len(dyana_report.network_activity)}"
-                    f" fs={len(dyana_report.filesystem_activity)}"
-                    f" sec={len(dyana_report.security_events)}"
-                )
-
         store.save_diff_report(report)
+
+        # If AI says suspicious/malicious and dyana is enabled, queue for detonation
+        # Runs in background thread, worker continues immediately
+        if DYANA_ENABLED and report.ai_classification in ("suspicious", "malicious"):
+            enqueue_detonation(
+                task.package_name, task.ecosystem, task.new_version,
+                report.risk_score, report.ai_classification,
+            )
         store.mark_event_processed(task.package_name, task.ecosystem, task.new_version)
 
         t_done = time.perf_counter()
@@ -319,6 +317,7 @@ def _save_metrics_to_db(qm, wm, cm):
                 "cache_misses": cm.misses,
                 "cache_hit_rate": round(cm.hit_rate, 2),
                 "cache_bytes_saved": cm.bytes_saved,
+                "dyana_queue": dyana_queue_size(),
             }
             conn.execute(
                 "INSERT OR REPLACE INTO runtime_metrics (key, data, updated_at) VALUES (?, ?, ?)",
@@ -375,6 +374,7 @@ def run_daemon(ecosystems: list[str] | None = None):
         except KeyboardInterrupt:
             print("\n[sent] Shutting down workers...")
             analysis_queue.shutdown()
+            stop_dyana_worker()
             _print_metrics()
             print("[sent] Done.")
             break
